@@ -1,0 +1,22 @@
+doctype 5
+html
+	head
+		title= title
+		link(rel='stylesheet', href='/style.css')
+		if !lock
+			script document.write('<script type="text/javascript">/*');
+			meta(http-equiv='refresh',content=interval + '; url=/?except=' + id)
+		script /**/ interval=#{interval}*1000; titleSuffix='#{titleSuffix.replace(/'/g, "\\'")}';
+	body
+		#stream(data-id=id)!= code
+		#infowrap: a(href='/streams',title='Click to choose a specific channel.')#info= name
+		#listwrap.hidden
+			#list
+				a#random(href='/',title='Pick a random channel every ' + interval + ' seconds.') Random
+				a#lock(href='#',title='Lock the current channel.') &nbsp;
+				a#close(href='#',title='Close the list.') X
+				#streams
+				#powered Powered by 
+					a(href='https://github.com/Bloutiouf/Rollstreams', target='_blank') Rollstreams
+		script(src='http://code.jquery.com/jquery-1.9.1.js')
+		script(src='/script.js')

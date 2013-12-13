@@ -1,0 +1,11 @@
+module.exports = {
+	interval: 5 * 60, // time between stream switches (client side) in seconds
+	siteName: "Rollstreams", // displayed after the stream name in page's title
+	streams: [
+		"http://www.justin.tv/...",
+		"http://www.twitch.tv/...",
+		"http://www.ustream.tv/channel/..."
+	],
+	updateInterval: 5 * 60, // time between stream updates (server side) in seconds
+	ustreamKey: "" // if you have streams from Ustream, you should need a devkey to access the API
+};

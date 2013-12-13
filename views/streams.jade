@@ -1,0 +1,15 @@
+doctype 5
+html
+	head
+		title= title
+		link(rel='stylesheet', href='/style.css')
+	body
+		#listwrap
+			#list
+				a#random(href='/',title='Pick a random channel every ' + interval + ' seconds.') Random
+				#streams
+					each stream, index in streams
+						if stream.online
+							a(href='/?id=' + index)= stream.name
+				#powered Powered by 
+					a(href='https://github.com/Bloutiouf/Rollstreams', target='_blank') Rollstreams

@@ -1,0 +1,20 @@
+a{color:#fff;text-decoration:none}
+a:hover{color:#ffc375}
+body{background-color:#000;color:#fff;font-family:Arial;margin:0;overflow:hidden}
+img{border:0}
+object{margin:0;padding:0}
+.hidden{display:none}
+#stream{height:100%}
+#infowrap{top:0;position:absolute;text-align:center;width:100%}
+#info{background-color:#38e3f6;font-size:64px;padding:10px}
+#listwrap{bottom:50px;position:absolute;text-align:center;top:50px;width:100%}
+#list{background-color:#38e3f6;margin:auto;max-height:100%;max-width:500px;overflow:auto;position:relative;}
+#list a{display:block;padding:10px}
+#random{font-size:36px;padding:20px}
+#close{font-size:36px;position:absolute;right:0;top:0}
+#lock{background-image:url("/lock.png");background-position:center;background-repeat:no-repeat;height:32px;left:0;position:absolute;top:0;width:32px}
+#lock:hover{background-image:url("/lockover.png")}
+#streams{font-size:24px;}
+#streams a > img{vertical-align:middle}
+#powered{font-size:16px;margin:10px;}
+#powered a{display:inline;font-weight:bold}
