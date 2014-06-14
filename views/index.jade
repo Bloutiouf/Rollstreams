@@ -1,21 +1,28 @@
-doctype 5
+doctype html
 html
 	head
-		title= title
+		meta(charset='UTF-8')
+		title= streams[0].name + ' - ' + titleSuffix
 		link(rel='stylesheet', href='/style.css')
 		if !lock
 			script document.write('<script type="text/javascript">/*');
-			meta(http-equiv='refresh',content=interval + '; url=/?except=' + id)
+			meta(http-equiv='refresh',content=interval + '; url=/?previous[]=' + id)
 		script /**/ interval=#{interval}*1000; titleSuffix='#{titleSuffix.replace(/'/g, "\\'")}';
 	body
-		#stream(data-id=id)!= code
-		#infowrap: a(href='/streams',title='Click to choose a specific channel.')#info= name
+		#streams
+			each stream in streams
+				.stream(data-id=stream.id, data-name=stream.name)!= stream.code
+		#infowrap: a(href='/streams',title='Click to choose a specific channel.')#info= streams[0].name
 		#listwrap.hidden
 			#list
-				a#random(href='/',title='Pick a random channel every ' + interval + ' seconds.') Random
-				a#lock(href='#',title='Lock the current channel.') &nbsp;
+				a#lock(href='#',title='Lock in the current channel(s).') &nbsp;
 				a#close(href='#',title='Close the list.') X
-				#streams
+				#layout
+					a.layout1(href='/',title='Display one stream.',data-n=1) &nbsp;
+					a.layout2x2(href='/',title='Display four streams on a 2x2 grid.',data-n=4) &nbsp;
+					a.layout3x3(href='/',title='Display nine streams on a 3x3 grid.',data-n=9) &nbsp;
+				a#random(href='/',title='Pick a random channel every ' + interval + ' seconds.') Random
+				#streamnames
 				#powered Powered by 
 					a(href='https://github.com/Bloutiouf/Rollstreams', target='_blank') Rollstreams
 		script(src='http://code.jquery.com/jquery-1.9.1.js')

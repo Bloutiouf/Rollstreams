@@ -12,6 +12,10 @@ body
 	margin 0
 	overflow hidden
 	
+iframe
+	border 0
+	overflow hidden
+	
 img
 	border 0
 
@@ -22,8 +26,13 @@ object
 .hidden
 	display none
 
-#stream
+#streams
+	text-align center
+
+.stream
+	display inline-block
 	height 100%
+	width 100%
 
 #infowrap
 	top 0
@@ -54,10 +63,6 @@ object
 	a
 		display block
 		padding 10px
-	
-#random
-	font-size 36px
-	padding 20px
 
 #close
 	font-size 36px
@@ -78,12 +83,42 @@ object
 #lock:hover
 	background-image url('/lockover.png')
 	
-#streams
+#layout
+	font-size 24px
+	a
+		background-position center
+		background-repeat no-repeat
+		display inline-block
+		height 32px
+		padding 10px
+		position relative
+		width 32px
+		
+	.layout1
+		background-image url('/1.png')
+	
+	.layout1:hover, .layout1.selected
+		background-image url('/1over.png')
+	
+	.layout2x2
+		background-image url('/2x2.png')
+	
+	.layout2x2:hover, .layout2x2.selected
+		background-image url('/2x2over.png')
+	
+	.layout3x3
+		background-image url('/3x3.png')
+	
+	.layout3x3:hover, .layout3x3.selected
+		background-image url('/3x3over.png')
+	
+#random
+	font-size 36px
+	padding 20px
+
+#streamnames
 	font-size 24px
 	
-	a > img
-		vertical-align middle
-		
 #powered
 	font-size 16px
 	margin 10px

@@ -1,7 +1,7 @@
 var conf = require('./conf'),
 	express = require('express'),
+	getStreams = require('./getStreams'),
 	http = require('http'),
-	lib = require('./lib'),
 	nib = require('nib'),
 	path = require('path'),
 	stylus = require('stylus');
@@ -13,6 +13,7 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 app.use(stylus.middleware({
+	dest: path.join(__dirname, 'generated'),
 	src: __dirname + '/public',
 	compile: function(str, path) {
 		return stylus(str)
@@ -22,71 +23,96 @@ app.use(stylus.middleware({
 			.import('nib');
 	}
 }));
+
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.favicon());
+app.use(express.static(path.join(__dirname, 'generated')));
 
-if (app.get('env') == 'development')
-	app.use(express.logger('dev'));
-	
-app.use(express.bodyParser());
-app.use(express.methodOverride());
-
-app.use(app.router);
-
-if (app.get('env') == 'development')
-	app.use(express.errorHandler());
-
-lib.initStreams(conf.streams, function(streams, online) {
-	var onlineStreams = online;
-	
-	setInterval(function() {
-		lib.updateStreams(streams, function(online) {
-			onlineStreams = online;
-		});
-	}, conf.updateInterval * 1000);
-	
-	function getStream(options, callback) {
+getStreams(function(streams) {
+	function pickStreams(options, callback) {
 		var id, stream;
 		options = options || {};
-		if (!options.hasOwnProperty('id')) {
-			do {
-				id = Math.floor(Math.random() * streams.length);
-				stream = streams[id];
-			} while (!stream || !stream.online || (onlineStreams > 1 && options.hasOwnProperty('except') && id == options.except));
-		} else {
-			id = options.id;
-			stream = streams[id];
+		
+		var nStreams = options.n;
+		if (isNaN(nStreams))
+			nStreams = conf.defaultStreamCount;
+		else
+			nStreams = Math.floor(nStreams);
+			
+		var chosenStreams = options.chosen;
+		if (typeof chosenStreams !== 'object') {
+			if (options.hasOwnProperty('id'))
+				chosenStreams = [options.id];
+			else
+				chosenStreams = [];
 		}
 		
-		callback(stream && {
-			id: id,
-			name: stream.name,
-			code: stream.code
+		var previousStreams = options.previous;
+		if (typeof previousStreams !== 'object')
+			previousStreams = [];
+		
+		var availableStreamCount = streams.online;
+		var availableStreams = streams.slice(0); // clone
+		
+		chosenStreams.forEach(function(id) {
+			availableStreams[id] = null;
 		});
+		
+		if (previousStreams.length + nStreams - chosenStreams.length <= streams.online)
+			previousStreams.forEach(function(id) {
+				var stream = availableStreams[id];
+				if (stream && stream.online) {
+					availableStreams[id] = null;
+					--availableStreamCount;
+				}
+			});
+		
+		if (nStreams > availableStreamCount)
+			nStreams = availableStreamCount;
+			
+		while (chosenStreams.length < nStreams) {
+			id = Math.floor(Math.random() * streams.length);
+			var stream = availableStreams[id];
+			if (stream && stream.online) {
+				chosenStreams.push(id);
+				availableStreams[id] = null;
+			}
+		}
+		
+		var results = [];
+		chosenStreams.forEach(function(id) {
+			var stream = streams[id];
+			if (stream)
+				results.push({
+					id: id,
+					name: stream.name,
+					code: stream.code
+				});
+		});
+		callback(results);
 	}
 	
 	app.get('/', function(req, res) {
-		getStream(req.query, function(stream) {
-			res.render('index', {
-				code: stream.code,
-				id: stream.id,
-				interval: conf.interval,
-				lock: req.query.hasOwnProperty('id'),
-				name: stream.name,
-				title: stream.name + (conf.siteName ? (' - ' + conf.siteName) : ''),
-				titleSuffix: conf.siteName || ''
-			});
+		pickStreams(req.query, function(streams) {
+			if (streams.length)
+				res.render('index', {
+					interval: conf.interval,
+					lock: req.query.hasOwnProperty('id'),
+					streams: streams,
+					titleSuffix: conf.siteName || ''
+				});
+			else
+				res.render('offline', {
+					interval: conf.interval,
+					title: conf.siteName
+				});
 		});
 	});
 	
-	app.get('/stream.json', function(req, res) {
+	app.get('/get.json', function(req, res) {
 		res.header('Content-type', 'application/json');
-		if (onlineStreams > 0) {
-			var stream = getStream(req.query, function(stream) {
-				res.send(JSON.stringify(stream));
-			});
-		} else
-			res.send(null);
+		pickStreams(req.query, function(streams) {
+			res.send(JSON.stringify(streams));
+		});
 	});
 
 	app.get('/streams', function(req, res) {
