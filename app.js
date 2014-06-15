@@ -1,7 +1,6 @@
 var conf = require('./conf'),
 	express = require('express'),
 	getStreams = require('./getStreams'),
-	http = require('http'),
 	nib = require('nib'),
 	path = require('path'),
 	stylus = require('stylus');
@@ -131,7 +130,8 @@ getStreams(function(streams) {
 		}));
 	});
 
-	http.createServer(app).listen(app.get('port'), function(){
-		console.log('Rollstreams server listening on port %d in %s mode', app.get('port'), app.get('env'));
-	});
+	if (require.main === module)
+		app.listen(app.get('port'), function(){
+			console.log('Rollstreams server listening on port %d in %s mode', app.get('port'), app.get('env'));
+		});
 });

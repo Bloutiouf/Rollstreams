@@ -47,6 +47,7 @@ It is also possible to set `streams` to a function, allowing you to asynchronous
 For instance, this is the `streams` function used for the [Global Game Jam](http://globalgamejam.org/):
 
 	var parseString = require('xml2js').parseString;
+	var request = require('request');
 	...
 	
 	streams: function(callback) {
