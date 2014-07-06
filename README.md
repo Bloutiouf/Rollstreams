@@ -85,12 +85,14 @@ For instance, this is the `streams` function used for the [Global Game Jam](http
 
 ### As a file
 
-Finally it is possible to set `streams` to a string, which is a filename relative to the app root. This file is JSON encoded and contain an array of urls as specified above.
+Finally it is possible to set `streams` to a string, which is a filename relative to the app root. This file is JSON encoded and contains an array of urls as specified above.
 
 In this case, an administration back-office is available where it is possible to add or remove streams. The file is overwritten on each change. The file doesn't have to exist at the beginning, which is the same as an empty array.
 
 Therefore, the file is merely a database and you shouldn't set its content by hand.
 
 ## License
+
+Copyright (c) 2013 Jonathan Giroux
 
 [MIT License](http://opensource.org/licenses/MIT)
