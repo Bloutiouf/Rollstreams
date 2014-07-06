@@ -22,6 +22,8 @@ Requirement: [Node.js](http://nodejs.org/).
 
 ## Streams
 
+### As an array
+
 To provide a known list of urls, simply provide them as an array of string. You can also give
 
 + any HTML code starting with `<`
@@ -41,6 +43,8 @@ For instance, this is the array provided in the template:
 			url: 'http://m.webcam-hd.com/les-saisies/hauteluce-mtblanc'
 		}
 	]
+
+### As a function
 
 It is also possible to set `streams` to a function, allowing you to asynchronously get the streams. This function has a `callback` function as argument, which takes an error object as first argument, and the array of urls as second argument (explanations above apply as well).
 
@@ -78,6 +82,14 @@ For instance, this is the `streams` function used for the [Global Game Jam](http
 			}
 		});
 	}
+
+### As a file
+
+Finally it is possible to set `streams` to a string, which is a filename relative to the app root. This file is JSON encoded and contain an array of urls as specified above.
+
+In this case, an administration back-office is available where it is possible to add or remove streams. The file is overwritten on each change. The file doesn't have to exist at the beginning, which is the same as an empty array.
+
+Therefore, the file is merely a database and you shouldn't set its content by hand.
 
 ## License
 

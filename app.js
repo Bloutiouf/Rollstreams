@@ -1,4 +1,6 @@
-var conf = require('./conf'),
+var basicAuth = require('basic-auth'),
+	bodyParser = require('body-parser'),
+	conf = require('./conf'),
 	express = require('express'),
 	getStreams = require('./getStreams'),
 	nib = require('nib'),
@@ -129,7 +131,79 @@ getStreams(function(streams) {
 			return null;
 		}));
 	});
-
+	
+	if (typeof conf.streams === 'string') {
+		var adminRouter = express.Router();
+		
+		adminRouter.use(function(req, res, next) {
+			if (!conf.adminUser) {
+				req.rights = ['add', 'remove'];
+				return next();
+			}
+			
+			function authenticate() {
+				res.set('WWW-Authenticate', 'Basic realm="Admin - ' + conf.siteName + '"');
+				res.send(401);
+			}
+			
+			var user = basicAuth(req);
+			if (!user)
+				return authenticate();
+			
+			function check(desc) {
+				if (user.name === desc.name && user.pass === desc.pass) {
+					req.rights = desc.rights;
+					return true;
+				}
+			}
+			
+			var valid = Array.isArray(conf.adminUser) ? conf.adminUser.some(check) : check(conf.adminUser);
+			if (valid)
+				next();
+			else
+				authenticate();
+		});
+		
+		adminRouter.use(bodyParser.urlencoded({
+			extended: false
+		}));
+		
+		adminRouter.post('/', function(req, res) {
+			if (req.rights.indexOf('add') !== -1)
+				streams.add(req.body, function(err) {
+					if (err)
+						return res.send(500);
+					
+					res.redirect(conf.adminPath);
+				});
+			else
+				res.send(401);
+		});
+		
+		adminRouter.get('/:index', function(req, res) {
+			if (req.rights.indexOf('remove') !== -1)
+				streams.remove(req.params.index, function(err) {
+					if (err)
+						return res.send(500);
+					
+					res.redirect(conf.adminPath);
+				});
+			else
+				res.send(401);
+		});
+		
+		adminRouter.use(function(req, res) {
+			res.render('admin', {
+				canAdd: req.rights.indexOf('add') !== -1,
+				canRemove: req.rights.indexOf('remove') !== -1,
+				streams: streams,
+				title: 'Admin - ' + conf.siteName
+			});
+		});
+		
+		app.use(conf.adminPath, adminRouter);
+	}
+	
 	if (require.main === module)
 		app.listen(app.get('port'), function(){
 			console.log('Rollstreams server listening on port %d in %s mode', app.get('port'), app.get('env'));

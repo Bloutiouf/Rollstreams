@@ -1,4 +1,10 @@
 module.exports = {
+	adminPath: "/admin", // only if streams are stored in a file
+	adminUser: { // only if streams are stored in a file, could also be an array of such objects, or null to disable authentication
+		name: "admin",
+		pass: "pizza", // kidding, never set a password to "pizza"
+		rights: ["add", "remove"]
+	},
 	interval: 5 * 60, // time between stream switches (client side) in seconds
 	iframeWhenMatches: null, // if set to a string, a url must include this string to be displayed in a iframe
 	siteName: 'Rollstreams', // displayed after the stream name in page's title

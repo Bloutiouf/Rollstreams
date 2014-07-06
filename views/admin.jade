@@ -1,0 +1,28 @@
+doctype html
+html
+	head
+		meta(charset='UTF-8')
+		title= title
+		link(rel='stylesheet', href='/style.css')
+	body
+		#listwrap
+			#list
+				if canAdd
+					form(method='POST')
+						input(autofocus , name='url', placeholder='URL', type='text')
+						input(name='title', placeholder='Enforce title (optional)', type='text')
+						button(type='submit') Add
+				#streamnames
+					each stream, index in streams
+						a(href='/?id=' + index)= stream.url + (stream.name ? ' (' + stream.name + ')' : '')
+						
+						.admin
+							if stream.online
+								span Online
+							else
+								span Offline
+							
+							if canRemove
+								a(href='/admin/' + index) Remove
+				#powered Powered by 
+					a(href='https://github.com/Bloutiouf/Rollstreams', target='_blank') Rollstreams

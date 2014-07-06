@@ -1,4 +1,6 @@
 var conf = require('./conf'),
+	fs = require('fs'),
+	path = require('path'),
 	request = require('request-json');
 
 var justinClient = request.newClient('http://api.justin.tv/api/');
@@ -10,14 +12,22 @@ var twitchRegexp = /^http:\/\/(?:www\.)?twitch\.tv\/([\w-]+)$/i;
 var ustreamClient = request.newClient('http://api.ustream.tv/json/');
 var ustreamRegexp = /^http:\/\/(?:www\.)ustream\.tv\/channel\/([\w-]+)$/i;
 
+if (typeof conf.streams === 'string')
+	var streamsPath = path.join(__dirname, conf.streams);
+
 function getStreams(callback) {
 	var streams = [];
+	var timeoutId;
 	
 	function updateStreams(callback) {
+		if (timeoutId !== null)
+			clearTimeout(timeoutId);
+		
 		var ustreams = [];
 		
 		function updateUStreams(index) {
 			if (index >= ustreams.length) {
+				timeoutId = setTimeout(updateStreams, conf.updateInterval * 1000);
 				if (callback)
 					callback();
 			} else {
@@ -127,19 +137,41 @@ function getStreams(callback) {
 			streams.length = 0;
 			streams.online = 0;
 			
-			if (err) {
-				if (callback)
-					callback();
-				return;
+			if (err)
+				urls = [];
+			
+			function saveUrls(callback) {
+				fs.writeFile(streamsPath, JSON.stringify(urls), function(err) {
+					if (err)
+						return callback(err);
+					updateStreams(function() {
+						return callback();
+					});
+				});
 			}
 			
-			urls.forEach(function(stream) {
+			streams.add = function(url, callback) {
+				urls.push(url);
+				return saveUrls(callback);
+			};
+			
+			streams.remove = function(index, callback) {
+				urls.splice(index, 1);
+				return saveUrls(callback);
+			};
+			
+			urls.forEach(function(url) {
 				var match;
 				
-				if (typeof stream === 'string')
-					stream = {
-						url: stream
+				if (typeof url === 'string')
+					var stream = {
+						url: url
 					};
+				else {
+					stream = {};
+					for (var key in url)
+						stream[key] = url[key];
+				}
 				
 				if ((match = stream.url.match(justinRegexp))) {
 					stream.provider = 'justin';
@@ -178,11 +210,13 @@ function getStreams(callback) {
 		
 		if (typeof conf.streams === 'function')
 			conf.streams(next);
+		else if (streamsPath)
+			fs.readFile(streamsPath, function(err, data) {
+				next(err, err ? null : JSON.parse(data));
+			});
 		else
 			next(false, conf.streams);
 	}
-
-	setInterval(updateStreams, conf.updateInterval * 1000);
 	
 	updateStreams(function() {
 		callback(streams);
