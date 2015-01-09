@@ -1,0 +1,38 @@
+development:
+  # only if streams are stored in a file
+  admin:
+    path: /admin
+    # could be null to disable authentication
+    users:
+      - name: admin
+        password:
+        rights:
+          - add
+          - remove
+  iframe:
+    # if set to a string, a url must include this string to be displayed in a iframe
+    matches: iframe
+  intervals:
+    # time between stream switches (client side) in seconds
+    switch: 300
+    # time between stream updates (server side) in seconds
+    update: 300
+  express:
+    port: 3001
+    # displayed after the stream name in page's title
+    title: Rollstreams
+  # array, or path to a JSON file that contains the array
+  streams:
+    - http://www.ustream.tv/channel/live-iss-stream
+    - http://www.twitch.tv/riotgames
+    - http://www.twitch.tv/beyondthesummit
+    - http://www.twitch.tv/spooner96
+    - title: Mont Blanc
+      url: http://m.webcam-hd.com/les-saisies/hauteluce-mtblanc
+  defaultStreamCount: 1
+  # available providers
+  providers:
+    - twitch
+    - ustream
+    - html
+    - iframe

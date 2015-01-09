@@ -1,226 +1,150 @@
-var conf = require('./conf'),
+var async = require('async'),
 	fs = require('fs'),
-	path = require('path'),
-	request = require('request-json');
+	path = require('path');
 
-var justinClient = request.newClient('http://api.justin.tv/api/');
-var justinRegexp = /^http:\/\/(?:www\.)?justin\.tv\/([\w-]+)$/i;
-
-var twitchClient = request.newClient('https://api.twitch.tv/kraken/');
-var twitchRegexp = /^http:\/\/(?:www\.)?twitch\.tv\/([\w-]+)$/i;
-
-var ustreamClient = request.newClient('http://api.ustream.tv/json/');
-var ustreamRegexp = /^http:\/\/(?:www\.)ustream\.tv\/channel\/([\w-]+)$/i;
-
-if (typeof conf.streams === 'string')
-	var streamsPath = path.join(__dirname, conf.streams);
-
-function getStreams(callback) {
-	var streams = [];
-	var timeoutId;
-	
-	function updateStreams(callback) {
-		if (timeoutId !== null)
-			clearTimeout(timeoutId);
-		
-		var ustreams = [];
-		
-		function updateUStreams(index) {
-			if (index >= ustreams.length) {
-				timeoutId = setTimeout(updateStreams, conf.updateInterval * 1000);
-				if (callback)
-					callback();
-			} else {
-				var channels = [];
-				for (var i = index, n = Math.min(index + 10, ustreams.length); i < n; ++i)
-					channels.push(ustreams[i].channel);
-				ustreamClient.get('channel/' + channels.join(';') + '/getInfo', function(err, res, body) {
-					if (err || !body.results) {
-						if (callback)
-							callback();
-					} else {
-						if (!body.results.length) {
-							var stream = ustreams[index];
-							var channel = body.results;
-							stream.online = (channel.status === 'live');
-							if (stream.online) {
-								++streams.online;
-								stream.name = stream.title || channel.title;
-								stream.code = '<object type="application/x-shockwave-flash" height="100%" width="100%" data="http://static-cdn1.ustream.tv/swf/live/viewer:232.swf?vrsl=c:572&amp;amp;ulbr=100"><param name="wmode" value="opaque"><param name="allowfullscreen" value="true"><param name="bgcolor" value="#000000"><param name="allowscriptaccess" value="always"><param name="flashvars" value="cid=' + channel.id + '&amp;autoplay=true"></object>';
-							}
-						}
-						else
-							for (var i = index; i < n; ++i) {
-								var stream = ustreams[i];
-								var channel = body.results[i-index].result;
-								stream.online = (channel.status === 'live');
-								if (stream.online) {
-									++streams.online;
-									stream.name = stream.title || channel.title;
-									stream.code = '<object type="application/x-shockwave-flash" height="100%" width="100%" data="http://static-cdn1.ustream.tv/swf/live/viewer:232.swf?vrsl=c:572&amp;amp;ulbr=100"><param name="wmode" value="opaque"><param name="allowfullscreen" value="true"><param name="bgcolor" value="#000000"><param name="allowscriptaccess" value="always"><param name="flashvars" value="cid=' + channel.id + '&amp;autoplay=true"></object>';
-								}
-							}
-						updateUStreams(index + 10);
-					}
+module.exports = function(config, callback) {
+	function registerUrls(urls) {
+		function updateStreams(callback) {
+			if (timeoutId !== null)
+				clearTimeout(timeoutId);
+			
+			return async.each(providers, function(provider, callback) {
+				return provider.update(callback);
+			}, function(err) {
+				client.streams = streams.filter(function(stream) {
+					return stream.online;
 				});
-			}
+				timeoutId = setTimeout(updateStreams, config.intervals.update * 1000);
+				
+				if (callback) return callback(err);
+			});
 		}
 		
-		function updateStream(index) {
-			var stream = streams[index];
-			if (stream) {
+		function registerUrl(url) {
+			var match;
 			
-				if (stream.provider === 'justin') {
-					justinClient.get('channel/show/' + stream.channel + '.json', function(err, res, body) {
-						if (err)
-							stream.online = false;
-						else {
-							stream.online = (body.description !== null);
-							if (stream.online) {
-								++streams.online;
-								stream.name = stream.title || body.title;
-								stream.code = '<object type="application/x-shockwave-flash" height="100%" width="100%" data="http://www.justin.tv/swflibs/JustinPlayer.swf"><param name="allowNetworking" value="all"><param name="allowScriptAccess" value="always"><param name="allowFullScreen" value="true"><param name="wmode" value="opaque"><param name="flashvars" value="publisherGuard=null&amp;hide_chat=true&amp;searchquery=null&amp;backgroundImageUrl=http://www-cdn.jtvnw.net/static/images/404_user_70x70.png&amp;channel=' + stream.channel + '&amp;hostname=www.justin.tv&amp;auto_play=true&amp;pro=false"></object>';
-							}
-						}
-						updateStream(index + 1);
-					});
-				}
-				
-				else if (stream.provider === 'twitch') {
-					twitchClient.get('streams/' + stream.channel, function(err, res, body) {
-						if (err)
-							stream.online = false;
-						else {
-							stream.online = (body.stream !== null);
-							if (stream.online) {
-								++streams.online;
-								stream.name = stream.title || body.stream.channel.status;
-								stream.code = '<object type="application/x-shockwave-flash" height="100%" width="100%" data="http://www.twitch.tv/widgets/live_embed_player.swf?channel=' + stream.channel + '" bgcolor="#000000"><param name="allowFullScreen" value="true"/><param name="allowScriptAccess" value="always"/><param name="allowNetworking" value="all"/><param name="wmode" value="opaque"/><param name="movie" value="http://www.twitch.tv/widgets/live_embed_player.swf"/><param name="flashvars" value="hostname=www.twitch.tv&channel=' + stream.channel + '&auto_play=true"/></object>';
-							}
-						}
-						updateStream(index + 1);
-					});
-				}
-				
-				else if (stream.provider === 'ustream') {
-					ustreams.push(stream);
-					updateStream(index + 1);
-				}
-				
-				else if (stream.provider === 'html') {
-					++streams.online;
-					stream.online = true;
-					stream.name = stream.title || stream.url;
-					stream.code = stream.url;
-					updateStream(index + 1);
-				}
-				
-				else if (stream.provider === 'iframe') {
-					++streams.online;
-					stream.online = true;
-					stream.name = stream.title || stream.url;
-					stream.code = '<iframe src="' + stream.url.replace('"', '') + '" width="100%" height="100%"></iframe>';
-					updateStream(index + 1);
-				}
-				
-				else {
-					stream.online = false;
-					updateStream(index + 1);
-				}
-				
-			} else {
-				updateUStreams(0);
+			if (typeof url === 'string')
+				var stream = {
+					url: url
+				};
+			else {
+				stream = {};
+				for (var property in url)
+					stream[property] = url[property];
 			}
+			
+			providers.some(function(provider) {
+				return provider.register(stream);
+			});
+			
+			return stream;
 		}
 		
-		function next(err, urls) {
-			streams.length = 0;
-			streams.online = 0;
-			
-			if (err)
-				urls = [];
-			
-			function saveUrls(callback) {
-				fs.writeFile(streamsPath, JSON.stringify(urls), function(err) {
-					if (err)
-						return callback(err);
-					updateStreams(function() {
-						return callback();
-					});
-				});
-			}
-			
-			streams.add = function(url, callback) {
-				urls.push(url);
-				return saveUrls(callback);
-			};
-			
-			streams.remove = function(index, callback) {
-				urls.splice(index, 1);
-				return saveUrls(callback);
-			};
-			
-			urls.forEach(function(url) {
-				var match;
+		function saveUrls(callback) {
+			return fs.writeFile(streamsPath, JSON.stringify(urls), function(err) {
+				if (err) return callback(err);
+				return updateStreams(callback);
+			});
+		}
+		
+		var timeoutId;
+		
+		var streams = urls.map(registerUrl);
+		
+		var streamByUrl = {};
+		streams.forEach(function(stream) {
+			streamByUrl[stream.url] = stream;
+		});
+		
+		var client = {
+			pick: function(options) {
+				var id, stream;
+				options = options || {};
 				
-				if (typeof url === 'string')
-					var stream = {
-						url: url
-					};
-				else {
-					stream = {};
-					for (var key in url)
-						stream[key] = url[key];
-				}
+				var availableStreams = client.streams.slice();
 				
-				if ((match = stream.url.match(justinRegexp))) {
-					stream.provider = 'justin';
-					stream.channel = match[1];
-				}
-				
-				else if ((match = stream.url.match(twitchRegexp))) {
-					stream.provider = 'twitch';
-					stream.channel = match[1];
-				}
-				
-				else if ((match = stream.url.match(ustreamRegexp))) {
-					stream.provider = 'ustream';
-					stream.channel = match[1];
-				}
-				
-				else if (stream.url[0] === '<') {
-					stream.provider = 'html';
-				}
-				
-				else if (!conf.iframeWhenMatches || stream.url.indexOf(conf.iframeWhenMatches) > 0) {
-					stream.provider = 'iframe';
-				}
-				
+				var count = options.count;
+				if (isNaN(count))
+					count = config.defaultStreamCount;
 				else
-					return;
+					count = Math.floor(count);
+					
+				var chosenStreams = [];
+				if (Array.isArray(options.chosen))
+					options.chosen.forEach(function(url) {
+						availableStreams = availableStreams.filter(function(stream) {
+							if (stream.url === url) {
+								chosenStreams.push(stream);
+								return false;
+							}
+							return true;
+						});
+					});
 				
-				streams.push(stream);
-			});
-			
-			if (streams.length > 0)
-				updateStream(0);
-			else if (callback)
-				callback();
+				var previousStreamUrls = options.previous;
+				if (Array.isArray(previousStreamUrls))
+					while (previousStreamUrls.length > 0 && chosenStreams.length + availableStreams.length > count) {
+						var url = previousStreamUrls.pop();
+						availableStreams = availableStreams.filter(function(stream) {
+							return (stream.url !== url);
+						});
+					}
+				
+				while (chosenStreams.length < count && availableStreams.length > 0) {
+					var index = Math.floor(Math.random() * availableStreams.length);
+					var stream = availableStreams.splice(index, 1)[0];
+					chosenStreams.push(stream);
+				}
+				
+				return chosenStreams;
+			}			
+		};
+		
+		if (streamsPath) {
+			client.admin = true;
+			client.add = function(url, callback) {
+				urls.push(url);
+				streams.push(registerUrl(url));
+				return saveUrls(callback);
+			};
+			client.remove = function(index, callback) {
+				var url = urls.splice(index, 1)[0];
+				var stream = streams.splice(index, 1)[0];
+				if (stream.unregister)
+					stream.unregister();
+				return saveUrls(callback);
+			};
 		}
 		
-		if (typeof conf.streams === 'function')
-			conf.streams(next);
-		else if (streamsPath)
-			fs.readFile(streamsPath, function(err, data) {
-				next(err, err ? null : JSON.parse(data));
-			});
-		else
-			next(false, conf.streams);
+		return updateStreams(function(err) {
+			if (err) return callback(err);
+			return callback(null, client);
+		});
 	}
 	
-	updateStreams(function() {
-		callback(streams);
+	var providers = config.providers.map(function(provider) {
+		var Provider = require('./providers/' + provider);
+		return new Provider(config);
 	});
-}
-
-module.exports = getStreams;
+	
+	if (typeof config.streams === 'string') {
+		if (config.streams.toLowerCase().indexOf('.json', config.streams.length - 5) !== -1) {
+			var streamsPath = config.streams;
+			return fs.readFile(streamsPath, function(err, data) {
+				if (err) return callback(err);
+				try {
+					var urls = JSON.parse(data)
+				} catch(err) {
+					return callback(err);
+				}
+				return registerUrls(urls);
+			});
+		} else
+			return require(config.streams)(function(err, urls) {
+				if (err) return callback(err);
+				return registerUrls(urls);
+			});
+	}
+	
+	return registerUrls(config.streams);
+};
